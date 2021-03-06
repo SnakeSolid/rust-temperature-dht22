@@ -6,7 +6,6 @@ mod dht22;
 
 use core::fmt::Write;
 use cortex_m_rt::entry;
-use cortex_m_semihosting::hprintln;
 use dht22::Dht22Sensor;
 use embedded_hal::blocking::delay::DelayMs;
 use embedded_hal::digital::v2::OutputPin;
@@ -56,8 +55,6 @@ fn main() -> ! {
 
     dht22.set_high().success();
     led.set_high().success();
-
-    hprintln!("Initialization. SysClk = {}", clocks.sysclk().0).success();
 
     let mut sensor = Dht22Sensor::new(dht22, clocks.sysclk());
     let (mut bluetooth_tx, _) = Serial::usart3(
