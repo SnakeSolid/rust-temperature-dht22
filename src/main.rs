@@ -3,7 +3,9 @@
 #![no_std]
 
 mod dht22;
+mod success;
 
+use crate::success::Success;
 use core::fmt::Write;
 use cortex_m_rt::entry;
 use dht22::Dht22Sensor;
@@ -20,20 +22,6 @@ use stm32f1xx_hal::rcc::RccExt;
 use stm32f1xx_hal::serial::Config;
 use stm32f1xx_hal::serial::Serial;
 use stm32f1xx_hal::time::U32Ext;
-
-pub trait Success<T> {
-    fn success(self) -> T;
-}
-
-impl<T, E> Success<T> for Result<T, E> {
-    #[inline]
-    fn success(self) -> T {
-        match self {
-            Ok(value) => value,
-            Err(_) => unreachable!(),
-        }
-    }
-}
 
 #[entry]
 fn main() -> ! {
@@ -70,6 +58,7 @@ fn main() -> ! {
     writeln!(bluetooth_tx, "CPU;Humidity;Temperature").success();
 
     loop {
+        let _ = led.set_low();
         let cpu_temp = adc.read_temp();
 
         match sensor.read() {
@@ -81,18 +70,17 @@ fn main() -> ! {
                     humidity / 10,
                     humidity % 10,
                     temperature / 10,
-                    temperature % 10
+                    temperature % 10,
                 )
                 .success();
             }
             Err(_) => {
-                writeln!(bluetooth_tx, "{};;", cpu_temp,).success();
+                writeln!(bluetooth_tx, "{};;", cpu_temp).success();
             }
         };
 
-        delay.delay_ms(60_000u16);
-        let _ = led.set_low();
-        delay.delay_ms(1_00u16);
         let _ = led.set_high();
+
+        delay.delay_ms(60_000u16);
     }
 }
