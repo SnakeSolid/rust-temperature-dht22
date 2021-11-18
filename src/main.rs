@@ -5,6 +5,7 @@
 mod dht22;
 mod success;
 
+use crate::dht22::Dht22Error;
 use crate::success::Success;
 use core::fmt::Write;
 use cortex_m_rt::entry;
@@ -73,6 +74,11 @@ fn main() -> ! {
                     temperature % 10,
                 )
                 .success();
+            }
+            Err(Dht22Error::InitializationError) => {
+                delay.delay_ms(10u16);
+
+                continue;
             }
             Err(_) => {
                 writeln!(bluetooth_tx, "{};;", cpu_temp).success();
