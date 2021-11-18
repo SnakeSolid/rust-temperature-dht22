@@ -1,9 +1,11 @@
+use crate::success::Success;
 use embedded_hal::digital::v2::InputPin;
 use embedded_hal::digital::v2::OutputPin;
 use stm32f1xx_hal::time::Hertz;
 
 #[derive(Debug)]
 pub enum Dht22Error {
+    InitializationError,
     ChecksumError,
 }
 
@@ -36,9 +38,9 @@ where
         let _ = self.pin.set_high();
         cortex_m::asm::delay(self.response_ticks);
 
-        while success(self.pin.is_high()) {}
-        while success(self.pin.is_low()) {}
-        while success(self.pin.is_high()) {}
+        self.wait_high()?;
+        self.wait_low()?;
+        self.wait_high()?;
 
         let humidity_high = self.read_byte();
         let humidity_low = self.read_byte();
@@ -63,6 +65,36 @@ where
     }
 
     #[inline]
+    fn wait_high(&self) -> Result<(), Dht22Error> {
+        let mut iterations = 0;
+
+        while self.pin.is_high().success() {
+            if iterations > self.initialization_ticks * 2 {
+                return Err(Dht22Error::InitializationError);
+            }
+
+            iterations += 1;
+        }
+
+        Ok(())
+    }
+
+    #[inline]
+    fn wait_low(&self) -> Result<(), Dht22Error> {
+        let mut iterations = 0;
+
+        while self.pin.is_low().success() {
+            if iterations > self.initialization_ticks * 2 {
+                return Err(Dht22Error::InitializationError);
+            }
+
+            iterations += 1;
+        }
+
+        Ok(())
+    }
+
+    #[inline]
     fn read_byte(&self) -> u8 {
         let mut result = 0;
 
@@ -82,26 +114,18 @@ where
         let mut low_loops = 0;
         let mut high_loops = 0;
 
-        while success(self.pin.is_low()) {
+        while self.pin.is_low().success() {
             low_loops += 1;
 
             cortex_m::asm::delay(self.microsecond_ticks);
         }
 
-        while success(self.pin.is_high()) {
+        while self.pin.is_high().success() {
             high_loops += 1;
 
             cortex_m::asm::delay(self.microsecond_ticks);
         }
 
         high_loops > low_loops
-    }
-}
-
-#[inline]
-fn success<T, E>(result: Result<T, E>) -> T {
-    match result {
-        Ok(value) => value,
-        Err(_) => unreachable!(),
     }
 }
